@@ -1,0 +1,67 @@
+
+services:
+
+  db:
+    image: postgres:15-alpine
+    container_name: market_db
+    env_file: .env
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+        - "5433:5432"
+    networks:
+      - market_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: market_api
+    env_file: .env
+    ports:
+      - "8000:8000"
+    networks:
+      - market_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  etl:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile
+    container_name: market_etl
+    env_file: .env
+    environment:
+      API_URL:                 http://api:8000/v1/market-data
+      POLL_INTERVAL_SECONDS:   5
+      MAX_RETRIES:             3
+      DB_READY_WAIT_SECONDS:   5
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - market_net
+    restart: unless-stopped
+
+networks:
+  market_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
