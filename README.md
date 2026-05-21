@@ -20,7 +20,7 @@ Docker Internal Network (market_net)
 
 ```bash
 # Clone the repo
-git clone <your-repo-url>
+git clone https://github.com/Prashanto1/mart_project.git
 cd market-pipeline
 
 # Spin up everything
